@@ -11,7 +11,6 @@ class Node:
         self.child_a = None
         self.child_b = None
         self.binary = ''
-        self.depth = None
 
     def has_children(self):
         if self.child_a is not None or self.child_b is not None:
@@ -159,7 +158,7 @@ def write_binary(name, data):
     write = open(filename, "wb")
     array = []
     count = 0
-    block_size = 31
+    block_size = 8
     for number in data:
         index = int(count/block_size)
         try:
@@ -168,12 +167,20 @@ def write_binary(name, data):
         except IndexError:
             array.append(number)
         count += 1
-    to_write = ''
+    to_write = bytearray()
+    final_array = bytearray()
+    buffer = 0
+    count = 0
     for chunk in array:
+        if count == len(array) - 1:
+            while len(chunk) < 8:
+                chunk += '0'
+                buffer += 1
+            final_array.append(buffer)
         num = int(chunk, 2)
-        byte = struct.pack('i', num)
-        to_write += str(byte)[2:-1]
-        write.write(byte)
+        to_write.append(num)
+        count += 1
+    write.write(final_array + to_write)
     write.close()
 
 
@@ -183,17 +190,20 @@ def read_binary(name):
     read = file.read()
     file.close()
     string = ''
+    buffer = read[0]
+    read = read[1:]
     length = len(read)
     for i in range(length):
-        modulo = i % 4
-        if modulo == 0:
-            four = bytes(read[i:(i+4)])
-            something = struct.unpack('i', four)[0]
-            binary = str(bin(something))[2:]
-            if i < length - 4 or binary == '0':
-                while len(binary) < 31:
-                    binary = '0' + binary
-            string += binary
+        raw = read[i]
+        binary = str(bin(raw))[2:]
+        if i < length - 1:
+            while len(binary) < 8:
+                binary = '0' + binary
+        else:
+            while len(binary) < 8:
+                binary = '0' + binary
+            binary = binary[:-buffer]
+        string += binary
     return string
 
 
@@ -220,8 +230,9 @@ def check(name):
     else:
         print("Encoding/decoding failure.")
 
+
 if __name__ == '__main__':
-    file_name = "Huffman coding - Wikipedia"
+    file_name = "A Game of Thrones"
     encode(file_name)
     decode(file_name)
     check(file_name)
