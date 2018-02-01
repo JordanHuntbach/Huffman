@@ -1,5 +1,4 @@
 import os
-import struct
 from collections import Counter
 
 
@@ -11,7 +10,6 @@ class Node:
         self.child_a = None
         self.child_b = None
         self.binary = ''
-        self.depth = None
 
     def has_children(self):
         if self.child_a is not None or self.child_b is not None:
@@ -97,7 +95,7 @@ def search_tree_decode(binary, tree):
     print("Decoding binary")
     output = ''
     total = len(binary)
-    x = 1
+    x = 5
     percent = x
     x_percent = len(binary) * x / 100
     progress = int(total - x_percent)
@@ -113,10 +111,7 @@ def search_tree_decode(binary, tree):
         else:
             current = current.child_b
         while current.has_children():
-            try:
-                search += binary[len(search)]  # TODO: This is throwing exceptions at the end of the larger files.
-            except IndexError:
-                print("oh no")
+            search += binary[len(search)]
             if search[-1] == '0':
                 current = current.child_a
             else:
@@ -135,13 +130,32 @@ def get_tree(name):
     return binary_tree
 
 
+def write_tree(tree):
+    string = ''
+    child_a = tree.child_a
+    child_b = tree.child_b
+    if child_a.has_children():
+        string += '0'
+        string += write_tree(child_a)
+    else:
+        string += '1' + child_a.code
+    if child_b.has_children():
+        string += '0'
+        string += write_tree(child_b)
+    else:
+        string += '1' + child_b.code
+    return string
+
+
 def encode(name):
     binary_tree = get_tree(name)
+    tree = write_tree(binary_tree)
+    tree = tree.encode()
     output = ''
     text = read_text('Plaintext/' + name + ".txt")
     for char in text:
         output += search_tree_encode(char, binary_tree)
-    write_binary('Encoded/' + name + ".hc", output)
+    write_binary('Encoded/' + name + ".hc", output, tree)
     print("Encoded " + name)
 
 
@@ -153,13 +167,14 @@ def write_text(name, data):
     write.close()
 
 
-def write_binary(name, data):
+def write_binary(name, data, tree_data):
     print("Writing binary to " + name)
     filename = name
     write = open(filename, "wb")
+    write.write(tree_data)
     array = []
     count = 0
-    block_size = 31
+    block_size = 8
     for number in data:
         index = int(count/block_size)
         try:
@@ -168,13 +183,44 @@ def write_binary(name, data):
         except IndexError:
             array.append(number)
         count += 1
-    to_write = ''
+    to_write = bytearray()
+    final_array = bytearray()
+    buffer = 0
+    count = 0
     for chunk in array:
+        if count == len(array) - 1:
+            while len(chunk) < 8:
+                chunk += '0'
+                buffer += 1
+            final_array.append(buffer)
         num = int(chunk, 2)
-        byte = struct.pack('i', num)
-        to_write += str(byte)[2:-1]
-        write.write(byte)
+        to_write.append(num)
+        count += 1
+    write.write(final_array + to_write)
     write.close()
+
+
+#                                 tree | data
+# b'0001l1e001.1a1i001s1t0001o1H01h1,1 |\x04\xc9\x03\x1b\xf7Nw:\xfae@'
+def reconstruct_tree(bytes_in):
+    byte_obj = bytearray(bytes_in)
+    tree = Node(None, None)
+    for i in range(2):
+        char = chr(byte_obj[0])
+        if char == '0':
+            del byte_obj[0]
+            if tree.child_a is None:
+                tree.child_a, byte_obj = reconstruct_tree(byte_obj)
+            else:
+                tree.child_b, byte_obj = reconstruct_tree(byte_obj)
+        else:
+            char = chr(byte_obj[1])
+            del byte_obj[0:2]
+            if tree.child_a is None:
+                tree.child_a = Node(None, char)
+            else:
+                tree.child_b = Node(None, char)
+    return tree, byte_obj
 
 
 def read_binary(name):
@@ -183,23 +229,27 @@ def read_binary(name):
     read = file.read()
     file.close()
     string = ''
+    tree, read = reconstruct_tree(read)
+    tree = attach_binary(tree)
+    buffer = read[0]
+    read = read[1:]
     length = len(read)
     for i in range(length):
-        modulo = i % 4
-        if modulo == 0:
-            four = bytes(read[i:(i+4)])
-            something = struct.unpack('i', four)[0]
-            binary = str(bin(something))[2:]
-            if i < length - 4 or binary == '0':
-                while len(binary) < 31:
-                    binary = '0' + binary
-            string += binary
-    return string
+        raw = read[i]
+        binary = str(bin(raw))[2:]
+        if i < length - 1:
+            while len(binary) < 8:
+                binary = '0' + binary
+        else:
+            while len(binary) < 8:
+                binary = '0' + binary
+            binary = binary[:-buffer]
+        string += binary
+    return tree, string
 
 
 def decode(name):
-    binary_tree = get_tree(name)
-    string = read_binary('Encoded/' + name + ".hc")
+    binary_tree, string = read_binary('Encoded/' + name + ".hc")
     write_text('Decoded/' + name + ".txt", search_tree_decode(string, binary_tree))
     print("Decoded " + name)
 
@@ -220,8 +270,9 @@ def check(name):
     else:
         print("Encoding/decoding failure.")
 
+
 if __name__ == '__main__':
-    file_name = "Huffman coding - Wikipedia"
+    file_name = "The-Jungle-Book"
     encode(file_name)
     decode(file_name)
     check(file_name)
