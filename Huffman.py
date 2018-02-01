@@ -1,5 +1,4 @@
 import os
-import struct
 from collections import Counter
 
 
@@ -232,7 +231,7 @@ def check(name):
 
 
 if __name__ == '__main__':
-    file_name = "A Game of Thrones"
+    file_name = "The-Jungle-Book"
     encode(file_name)
     decode(file_name)
     check(file_name)
