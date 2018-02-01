@@ -19,7 +19,6 @@ class Node:
 
 
 def read_text(name):
-    print("Reading text from " + name)
     filename = name
     file = open(filename, "r")
     read = file.read()
@@ -92,7 +91,7 @@ def search_tree_encode(key, tree):
 
 
 def search_tree_decode(binary, tree):
-    print("Decoding binary")
+    print("Decoding binary...")
     output = ''
     total = len(binary)
     x = 5
@@ -156,11 +155,10 @@ def encode(name):
     for char in text:
         output += search_tree_encode(char, binary_tree)
     write_binary('Encoded/' + name + ".hc", output, tree)
-    print("Encoded " + name)
+    print(name + " encoded.\n")
 
 
 def write_text(name, data):
-    print("Writing text to " + name)
     filename = name
     write = open(filename, "w")
     write.write(data)
@@ -200,8 +198,6 @@ def write_binary(name, data, tree_data):
     write.close()
 
 
-#                                 tree | data
-# b'0001l1e001.1a1i001s1t0001o1H01h1,1 |\x04\xc9\x03\x1b\xf7Nw:\xfae@'
 def reconstruct_tree(bytes_in):
     byte_obj = bytearray(bytes_in)
     tree = Node(None, None)
@@ -251,7 +247,7 @@ def read_binary(name):
 def decode(name):
     binary_tree, string = read_binary('Encoded/' + name + ".hc")
     write_text('Decoded/' + name + ".txt", search_tree_decode(string, binary_tree))
-    print("Decoded " + name)
+    print(name + " decoded.\n")
 
 
 def get_ratio(name):
@@ -266,7 +262,7 @@ def check(name):
     text = read_text('Plaintext/' + name + ".txt")
     code = read_text('Decoded/' + name + ".txt")
     if text == code:
-        print("File encoded/decoded successfully.")
+        print("File encoded/decoded successfully.\n---------------------------------- ")
     else:
         print("Encoding/decoding failure.")
 
