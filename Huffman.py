@@ -92,33 +92,35 @@ def search_tree_encode(key, tree):
 
 def search_tree_decode(binary, tree):
     print("Decoding binary...")
-    output = ''
+    output = []
     total = len(binary)
-    x = 1
+    x = 5
     percent = x
     x_percent = len(binary) * x / 100
-    progress = int(total - x_percent)
-    while len(binary) > 0:
-        if len(binary) < progress:
-            progress = int(progress - x_percent)
+    progress = int(x_percent)
+    pointer = 0
+    end = len(binary)
+    while pointer < end:
+        if pointer > progress:
+            progress = int(progress + x_percent)
             print(str(percent) + '% done')
             percent += x
         current = tree
-        search = binary[0]
+        search = binary[pointer]
         if search == '0':
             current = current.child_a
         else:
             current = current.child_b
         while current.has_children():
-            search += binary[len(search)]
+            search += binary[pointer + len(search)]
             if search[-1] == '0':
                 current = current.child_a
             else:
                 current = current.child_b
-        output += current.code
-        binary = binary[len(search):]
+        output.append(current.code)
+        pointer += len(search)
     print('100% done')
-    return output
+    return ''.join(output)
 
 
 def get_tree(name):
@@ -280,7 +282,7 @@ def check(name):
 
 
 if __name__ == '__main__':
-    file_name = "war2"
+    file_name = "war"
     encode(file_name)
     decode(file_name)
     check(file_name)
