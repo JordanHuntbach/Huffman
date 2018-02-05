@@ -94,7 +94,7 @@ def search_tree_decode(binary, tree):
     print("Decoding binary...")
     output = ''
     total = len(binary)
-    x = 5
+    x = 1
     percent = x
     x_percent = len(binary) * x / 100
     progress = int(total - x_percent)
@@ -148,7 +148,7 @@ def write_tree(tree):
 
 def encode(name):
     binary_tree = get_tree(name)
-    tree = write_tree(binary_tree)
+    tree = write_tree(binary_tree) + '1'
     tree = tree.encode()
     output = ''
     text = read_text('Plaintext/' + name + ".txt")
@@ -202,16 +202,27 @@ def reconstruct_tree(bytes_in):
     byte_obj = bytearray(bytes_in)
     tree = Node(None, None)
     for i in range(2):
-        char = chr(byte_obj[0])
-        if char == '0':
+        flag = chr(byte_obj[0])
+        if flag == '0':
             del byte_obj[0]
             if tree.child_a is None:
                 tree.child_a, byte_obj = reconstruct_tree(byte_obj)
             else:
                 tree.child_b, byte_obj = reconstruct_tree(byte_obj)
         else:
-            char = chr(byte_obj[1])
-            del byte_obj[0:2]
+            del byte_obj[0]
+            collection = bytearray()
+            collection.append(byte_obj[0])
+            del byte_obj[0]
+            char = chr(byte_obj[0])
+            while (char != '0') & (char != '1'):
+                collection.append(byte_obj[0])
+                del byte_obj[0]
+                char = chr(byte_obj[0])
+            if len(collection) > 1:
+                char = collection.decode()
+            else:
+                char = chr(collection[0])
             if tree.child_a is None:
                 tree.child_a = Node(None, char)
             else:
@@ -227,6 +238,7 @@ def read_binary(name):
     string = ''
     tree, read = reconstruct_tree(read)
     tree = attach_binary(tree)
+    read = read[1:]
     buffer = read[0]
     read = read[1:]
     length = len(read)
@@ -268,7 +280,7 @@ def check(name):
 
 
 if __name__ == '__main__':
-    file_name = "The-Jungle-Book"
+    file_name = "war2"
     encode(file_name)
     decode(file_name)
     check(file_name)
