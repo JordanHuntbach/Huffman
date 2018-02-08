@@ -1,5 +1,6 @@
 import os
 from collections import Counter
+import sys
 
 
 class Node:
@@ -28,27 +29,20 @@ def read_text(name):
 
 def count_frequencies(text):
     # Count Frequencies
-    count = Counter()
-    total = 0
-    for char in text:
-        count[char] += 1
-        total += 1
+    count = Counter(text)
     return count
 
 
 def create_tree(frequencies):
     # Initialise Tree
-    tree = Counter()
-    for key in frequencies.elements():
-        tree[key] = Node(frequencies[key], key)
+    tree = {}
+    for (key, value) in frequencies.items():
+        tree[key] = Node(value, key)
     # Merge leaves to form tree structure
     while len(frequencies) > 2:
-        a = frequencies.most_common()[-1]
-        b = frequencies.most_common()[-2]
-        char_a = a[0]
-        count_a = a[1]
-        char_b = b[0]
-        count_b = b[1]
+        ordered = frequencies.most_common()
+        char_a, count_a = ordered[-1]
+        char_b, count_b = ordered[-2]
         del frequencies[char_a], frequencies[char_b]
         merged = char_a + char_b
         merged_sum = count_a + count_b
@@ -60,9 +54,7 @@ def create_tree(frequencies):
         tree[merged] = node
     a = frequencies.most_common()[-1]
     b = frequencies.most_common()[-2]
-    merged = a[0] + b[0]
-    merged_sum = a[1] + b[1]
-    root = Node(merged_sum, merged)
+    root = Node(a[1] + b[1], a[0] + b[0])
     root.root = True
     root.child_a = tree[a[0]]
     root.child_b = tree[b[0]]
@@ -72,13 +64,29 @@ def create_tree(frequencies):
 def attach_binary(tree):
     child_a = tree.child_a
     child_b = tree.child_b
-    if child_a is not None:
+    try:
         child_a.binary = tree.binary + '0'
         attach_binary(child_a)
-    if child_b is not None:
+    except AttributeError:
+        pass
+    try:
         child_b.binary = tree.binary + '1'
         attach_binary(child_b)
+    except AttributeError:
+        pass
     return tree
+
+
+def tree_to_dict(tree, dictionary):
+    if not tree.has_children():
+        dictionary[tree.code] = tree.binary
+        return dictionary
+    else:
+        if tree.child_a is not None:
+            dictionary = tree_to_dict(tree.child_a, dictionary)
+        if tree.child_b is not None:
+            dictionary = tree_to_dict(tree.child_b, dictionary)
+        return dictionary
 
 
 def search_tree_encode(key, tree):
@@ -93,18 +101,9 @@ def search_tree_encode(key, tree):
 def search_tree_decode(binary, tree):
     print("Decoding binary...")
     output = []
-    total = len(binary)
-    x = 5
-    percent = x
-    x_percent = len(binary) * x / 100
-    progress = int(x_percent)
     pointer = 0
     end = len(binary)
     while pointer < end:
-        if pointer > progress:
-            progress = int(progress + x_percent)
-            print(str(percent) + '% done')
-            percent += x
         current = tree
         search = binary[pointer]
         if search == '0':
@@ -123,40 +122,42 @@ def search_tree_decode(binary, tree):
     return ''.join(output)
 
 
-def get_tree(name):
-    print("Generating binary tree")
-    text = read_text('Plaintext/' + name + ".txt")
+def get_tree(text):
+    print("Counting frequencies")
     word_frequencies = count_frequencies(text)
+    print("Creating binary tree")
     binary_tree = attach_binary(create_tree(word_frequencies))
     return binary_tree
 
 
 def write_tree(tree):
-    string = ''
+    string = []
     child_a = tree.child_a
     child_b = tree.child_b
     if child_a.has_children():
-        string += '0'
-        string += write_tree(child_a)
+        string.append('0')
+        string.extend(write_tree(child_a))
     else:
-        string += '1' + child_a.code
+        string.append('1' + child_a.code)
     if child_b.has_children():
-        string += '0'
-        string += write_tree(child_b)
+        string.append('0')
+        string.extend(write_tree(child_b))
     else:
-        string += '1' + child_b.code
+        string.append('1' + child_b.code)
     return string
 
 
 def encode(name):
-    binary_tree = get_tree(name)
-    tree = write_tree(binary_tree) + '1'
-    tree = tree.encode()
-    output = ''
     text = read_text('Plaintext/' + name + ".txt")
-    for char in text:
-        output += search_tree_encode(char, binary_tree)
-    write_binary('Encoded/' + name + ".hc", output, tree)
+    binary_tree = get_tree(text)
+    dictionary = tree_to_dict(binary_tree, {})
+    tree_list = write_tree(binary_tree)
+    tree_list.append('1')
+    tree = ''.join(tree_list)
+    tree = tree.encode()
+    print("Encoding text.")
+    output = [dictionary[char] for char in text]
+    write_binary('Encoded/' + name + ".hc", ''.join(output), tree)
     print(name + " encoded.\n")
 
 
@@ -172,30 +173,23 @@ def write_binary(name, data, tree_data):
     filename = name
     write = open(filename, "wb")
     write.write(tree_data)
-    array = []
-    count = 0
-    block_size = 8
-    for number in data:
-        index = int(count/block_size)
-        try:
-            x = array[index]
-            array[index] = x + number
-        except IndexError:
-            array.append(number)
-        count += 1
+    array = [data[i:i + 8] for i in range(0, len(data), 8)]
     to_write = bytearray()
     final_array = bytearray()
     buffer = 0
-    count = 0
+    final_chunk = array[-1]
+    array = array[:-1]
     for chunk in array:
-        if count == len(array) - 1:
-            while len(chunk) < 8:
-                chunk += '0'
-                buffer += 1
-            final_array.append(buffer)
         num = int(chunk, 2)
         to_write.append(num)
-        count += 1
+    # Handles the last byte having less than 8 bits.
+    while len(final_chunk) < 8:
+        final_chunk += '0'
+        buffer += 1
+    final_array.append(buffer)
+    num = int(final_chunk, 2)
+    to_write.append(num)
+    # Writes to file.
     write.write(final_array + to_write)
     write.close()
 
@@ -237,7 +231,7 @@ def read_binary(name):
     file = open(name, "rb")
     read = file.read()
     file.close()
-    string = ''
+    string = []
     tree, read = reconstruct_tree(read)
     tree = attach_binary(tree)
     read = read[1:]
@@ -246,16 +240,13 @@ def read_binary(name):
     length = len(read)
     for i in range(length):
         raw = read[i]
-        binary = str(bin(raw))[2:]
-        if i < length - 1:
-            while len(binary) < 8:
-                binary = '0' + binary
-        else:
-            while len(binary) < 8:
-                binary = '0' + binary
+        binary = bin(raw)[2:]
+        while len(binary) < 8:
+            binary = '0' + binary
+        if i >= length - 1:
             binary = binary[:-buffer]
-        string += binary
-    return tree, string
+        string.append(binary)
+    return tree, ''.join(string)
 
 
 def decode(name):
@@ -282,8 +273,17 @@ def check(name):
 
 
 if __name__ == '__main__':
-    file_name = "war"
-    encode(file_name)
-    decode(file_name)
-    check(file_name)
-    get_ratio(file_name)
+    try:
+        file_name = sys.argv[1]
+        encode(file_name)
+        decode(file_name)
+        # check(file_name)
+        # get_ratio(file_name)
+    except IndexError:
+        # print("Error: No filename provided.")
+        # print("usage: Huffman.py filename")
+        file_name = "Sherlock Holmes"
+        encode(file_name)
+        decode(file_name)
+        check(file_name)
+        get_ratio(file_name)
