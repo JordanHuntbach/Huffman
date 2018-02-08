@@ -77,15 +77,27 @@ def attach_binary(tree):
     return tree
 
 
-def tree_to_dict(tree, dictionary):
+def tree_to_dict_code(tree, dictionary):
     if not tree.has_children():
         dictionary[tree.code] = tree.binary
         return dictionary
     else:
         if tree.child_a is not None:
-            dictionary = tree_to_dict(tree.child_a, dictionary)
+            dictionary = tree_to_dict_code(tree.child_a, dictionary)
         if tree.child_b is not None:
-            dictionary = tree_to_dict(tree.child_b, dictionary)
+            dictionary = tree_to_dict_code(tree.child_b, dictionary)
+        return dictionary
+
+
+def tree_to_dict_bin(tree, dictionary):
+    if not tree.has_children():
+        dictionary[tree.binary] = tree.code
+        return dictionary
+    else:
+        if tree.child_a is not None:
+            dictionary = tree_to_dict_bin(tree.child_a, dictionary)
+        if tree.child_b is not None:
+            dictionary = tree_to_dict_bin(tree.child_b, dictionary)
         return dictionary
 
 
@@ -100,24 +112,17 @@ def search_tree_encode(key, tree):
 
 def search_tree_decode(binary, tree):
     print("Decoding binary...")
+    dictionary = tree_to_dict_bin(tree, {})
     output = []
-    pointer = 0
-    end = len(binary)
-    while pointer < end:
-        current = tree
-        search = binary[pointer]
-        if search == '0':
-            current = current.child_a
-        else:
-            current = current.child_b
-        while current.has_children():
-            search += binary[pointer + len(search)]
-            if search[-1] == '0':
-                current = current.child_a
-            else:
-                current = current.child_b
-        output.append(current.code)
-        pointer += len(search)
+    string = ''
+    for i in range(0, len(binary)):
+        string += binary[i]
+        try:
+            char = dictionary[string]
+            output.append(char)
+            string = ''
+        except KeyError:
+            pass
     print('100% done')
     return ''.join(output)
 
@@ -150,7 +155,7 @@ def write_tree(tree):
 def encode(name):
     text = read_text('Plaintext/' + name + ".txt")
     binary_tree = get_tree(text)
-    dictionary = tree_to_dict(binary_tree, {})
+    dictionary = tree_to_dict_code(binary_tree, {})
     tree_list = write_tree(binary_tree)
     tree_list.append('1')
     tree = ''.join(tree_list)
@@ -231,21 +236,15 @@ def read_binary(name):
     file = open(name, "rb")
     read = file.read()
     file.close()
-    string = []
     tree, read = reconstruct_tree(read)
     tree = attach_binary(tree)
-    read = read[1:]
-    buffer = read[0]
-    read = read[1:]
+    buffer = read[1]
+    read = read[2:]
     length = len(read)
-    for i in range(length):
-        raw = read[i]
-        binary = bin(raw)[2:]
-        while len(binary) < 8:
-            binary = '0' + binary
-        if i >= length - 1:
-            binary = binary[:-buffer]
-        string.append(binary)
+    string = ['{0:08b}'.format(read[i]) for i in range(length-1)]
+    binary = '{0:08b}'.format(read[-1])
+    binary = binary[:-buffer]
+    string.append(binary)
     return tree, ''.join(string)
 
 
