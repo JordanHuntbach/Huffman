@@ -27,12 +27,6 @@ def read_text(name):
     return read
 
 
-def count_frequencies(text):
-    # Count Frequencies
-    count = Counter(text)
-    return count
-
-
 def create_tree(frequencies):
     # Initialise Tree
     tree = {}
@@ -75,6 +69,27 @@ def attach_binary(tree):
     except AttributeError:
         pass
     return tree
+
+
+def chunk_string(text, n):
+    output = []
+    buffer = 0
+    for index in range(0, len(text)):
+        if index % n == 0:
+            duo = text[index: index + n]
+            while len(duo) < n:
+                duo += 'X'
+                buffer += 1
+            output.append(duo)
+    return output, buffer
+
+
+def get_tree(text, characters):
+    print("Counting frequencies")
+    word_frequencies = Counter(chunk_string(text, characters)[0])
+    print("Creating binary tree")
+    binary_tree = attach_binary(create_tree(word_frequencies))
+    return binary_tree
 
 
 def tree_to_dict_code(tree, dictionary):
@@ -123,16 +138,7 @@ def search_tree_decode(binary, tree):
             string = ''
         except KeyError:
             pass
-    print('100% done')
     return ''.join(output)
-
-
-def get_tree(text):
-    print("Counting frequencies")
-    word_frequencies = count_frequencies(text)
-    print("Creating binary tree")
-    binary_tree = attach_binary(create_tree(word_frequencies))
-    return binary_tree
 
 
 def write_tree(tree):
@@ -152,16 +158,19 @@ def write_tree(tree):
     return string
 
 
-def encode(name):
+def encode(name, characters):
     text = read_text('Plaintext/' + name + ".txt")
-    binary_tree = get_tree(text)
+    binary_tree = get_tree(text, characters)
     dictionary = tree_to_dict_code(binary_tree, {})
     tree_list = write_tree(binary_tree)
-    tree_list.append('1')
+    tree_list.insert(0, str(characters))
+
+    print("Encoding text.")
+    chunks, buffer = chunk_string(text, characters)
+    tree_list.insert(0, str(buffer))
+    output = [dictionary[chunk] for chunk in chunks]
     tree = ''.join(tree_list)
     tree = tree.encode()
-    print("Encoding text.")
-    output = [dictionary[char] for char in text]
     write_binary('Encoded/' + name + ".hc", ''.join(output), tree)
     print(name + " encoded.\n")
 
@@ -199,35 +208,46 @@ def write_binary(name, data, tree_data):
     write.close()
 
 
-def reconstruct_tree(bytes_in):
+def reconstruct_tree(bytes_in, characters):
     byte_obj = bytearray(bytes_in)
+    if characters is None:
+        characters = int(chr(byte_obj[0]))
+        del byte_obj[0]
     tree = Node(None, None)
     for i in range(2):
         flag = chr(byte_obj[0])
         if flag == '0':
             del byte_obj[0]
             if tree.child_a is None:
-                tree.child_a, byte_obj = reconstruct_tree(byte_obj)
+                tree.child_a, byte_obj = reconstruct_tree(byte_obj, characters)
             else:
-                tree.child_b, byte_obj = reconstruct_tree(byte_obj)
-        else:
+                tree.child_b, byte_obj = reconstruct_tree(byte_obj, characters)
+        elif flag == '1':
             del byte_obj[0]
             collection = bytearray()
-            collection.append(byte_obj[0])
-            del byte_obj[0]
-            char = chr(byte_obj[0])
-            while (char != '0') & (char != '1'):
-                collection.append(byte_obj[0])
-                del byte_obj[0]
-                char = chr(byte_obj[0])
-            if len(collection) > 1:
-                char = collection.decode()
-            else:
-                char = chr(collection[0])
+            for j in range(0, characters):
+                num = byte_obj[0]
+                if num < 128:
+                    collection.append(byte_obj[0])
+                    del byte_obj[0]
+                else:
+                    if num >= 240:
+                        count = 4
+                    elif num >= 224:
+                        count = 3
+                    else:
+                        count = 2
+                    while count > 0:
+                        collection.append(byte_obj[0])
+                        del byte_obj[0]
+                        count -= 1
+            char = collection.decode()
             if tree.child_a is None:
                 tree.child_a = Node(None, char)
             else:
                 tree.child_b = Node(None, char)
+        else:
+            print('oh')
     return tree, byte_obj
 
 
@@ -236,21 +256,26 @@ def read_binary(name):
     file = open(name, "rb")
     read = file.read()
     file.close()
-    tree, read = reconstruct_tree(read)
+    character_buffer = int(chr(read[0]))
+    read = read[1:]
+    tree, read = reconstruct_tree(read, None)
     tree = attach_binary(tree)
-    buffer = read[1]
-    read = read[2:]
+    binary_buffer = read[0]
+    read = read[1:]
     length = len(read)
     string = ['{0:08b}'.format(read[i]) for i in range(length-1)]
     binary = '{0:08b}'.format(read[-1])
-    binary = binary[:-buffer]
+    binary = binary[:-binary_buffer]
     string.append(binary)
-    return tree, ''.join(string)
+    return tree, ''.join(string), character_buffer
 
 
 def decode(name):
-    binary_tree, string = read_binary('Encoded/' + name + ".hc")
-    write_text('Decoded/' + name + ".txt", search_tree_decode(string, binary_tree))
+    binary_tree, string, buffer = read_binary('Encoded/' + name + ".hc")
+    output = search_tree_decode(string, binary_tree)
+    if buffer != 0:
+        output = output[:-buffer]
+    write_text('Decoded/' + name + ".txt", output)
     print(name + " decoded.\n")
 
 
@@ -274,15 +299,15 @@ def check(name):
 if __name__ == '__main__':
     try:
         file_name = sys.argv[1]
-        encode(file_name)
+        encode(file_name, 1)
         decode(file_name)
         # check(file_name)
         # get_ratio(file_name)
     except IndexError:
         # print("Error: No filename provided.")
         # print("usage: Huffman.py filename")
-        file_name = "Sherlock Holmes"
-        encode(file_name)
+        file_name = "sherlock holmes"
+        encode(file_name, 3)
         decode(file_name)
         check(file_name)
         get_ratio(file_name)
