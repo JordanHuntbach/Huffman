@@ -1,6 +1,7 @@
 import os
 from collections import Counter
 import sys
+from heapq import heapify, heappop, heappush
 
 
 class Node:
@@ -18,6 +19,9 @@ class Node:
         else:
             return False
 
+    def __gt__(self, node2):
+        return self.frequency > node2.frequency
+
 
 def read_text(name):
     filename = name
@@ -29,29 +33,22 @@ def read_text(name):
 
 def create_tree(frequencies):
     # Initialise Tree
-    tree = {}
-    for (key, value) in frequencies.items():
-        tree[key] = Node(value, key)
+    tree = [Node(value, key) for (key, value) in frequencies.items()]
+    heapify(tree)
     # Merge leaves to form tree structure
-    while len(frequencies) > 2:
-        ordered = frequencies.most_common()
-        char_a, count_a = ordered[-1]
-        char_b, count_b = ordered[-2]
-        del frequencies[char_a], frequencies[char_b]
-        merged = char_a + char_b
-        merged_sum = count_a + count_b
-        frequencies[merged] = merged_sum
-        node = Node(merged_sum, merged)
-        node.child_a = tree[char_a]
-        node.child_b = tree[char_b]
-        del tree[char_a], tree[char_b]
-        tree[merged] = node
-    a = frequencies.most_common()[-1]
-    b = frequencies.most_common()[-2]
-    root = Node(a[1] + b[1], a[0] + b[0])
+    while len(tree) > 2:
+        child_a = heappop(tree)
+        child_b = heappop(tree)
+        merged = Node(child_a.frequency + child_b.frequency, child_a.code + child_b.code)
+        merged.child_a = child_a
+        merged.child_b = child_b
+        heappush(tree, merged)
+    child_a = heappop(tree)
+    child_b = heappop(tree)
+    root = Node(child_a.frequency + child_b.frequency, child_a.code + child_b.code)
+    root.child_a = child_a
+    root.child_b = child_b
     root.root = True
-    root.child_a = tree[a[0]]
-    root.child_b = tree[b[0]]
     return root
 
 
@@ -299,15 +296,15 @@ def check(name):
 if __name__ == '__main__':
     try:
         file_name = sys.argv[1]
-        encode(file_name, 1)
+        encode(file_name, 3)
         decode(file_name)
         # check(file_name)
         # get_ratio(file_name)
     except IndexError:
         # print("Error: No filename provided.")
         # print("usage: Huffman.py filename")
-        file_name = "sherlock holmes"
-        encode(file_name, 3)
+        file_name = "test"
+        encode(file_name, 1)
         decode(file_name)
         check(file_name)
         get_ratio(file_name)
