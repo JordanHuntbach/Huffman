@@ -1,6 +1,5 @@
 import os
 from collections import Counter
-import sys
 from heapq import heapify, heappop, heappush
 
 
@@ -312,7 +311,7 @@ def reconstruct_tree(bytes_in, characters):
     byte_obj = bytearray(bytes_in)
 
     # Establishes the number of characters to look for, per leaf (initially gets this from the flag, then passes is to
-    #  all recursively called methods.
+    #  all recursive calls.
     if characters is None:
         characters = int(chr(byte_obj[0]))
         del byte_obj[0]
@@ -371,7 +370,7 @@ def read_binary(name):
     binary_buffer = read[0]
     read = read[1:]
 
-    # Break the binary up into byte chunks.
+    # Break the bytes up into 8 bit binary strings.
     length = len(read)
     string = ['{0:08b}'.format(read[i]) for i in range(length-1)]
 
@@ -411,27 +410,10 @@ def get_ratio(name):
 
 
 # Checks if the decoded file is the same as the plaintext.
-def check(name):
+def check_success(name):
     text = read_text('Plaintext/' + name + ".txt")
     code = read_text('Decoded/' + name + ".txt")
     if text == code:
         print("File encoded/decoded successfully.\n---------------------------------- ")
     else:
         print("Encoding/decoding failure.")
-
-
-if __name__ == '__main__':
-    try:
-        file_name = sys.argv[1]
-        encode(file_name, 3)
-        decode(file_name)
-        # check(file_name)
-        # get_ratio(file_name)
-    except IndexError:
-        # print("Error: No filename provided.")
-        # print("usage: Huffman.py filename")
-        file_name = "test"
-        encode(file_name, 1)
-        decode(file_name)
-        check(file_name)
-        get_ratio(file_name)
