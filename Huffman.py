@@ -417,3 +417,7 @@ def check_success(name):
         print("File encoded/decoded successfully.\n---------------------------------- ")
     else:
         print("Encoding/decoding failure.")
+
+
+def best_blocks(text):
+    return 1  # TODO: Make this work.

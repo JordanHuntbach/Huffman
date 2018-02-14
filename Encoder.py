@@ -11,7 +11,7 @@ if __name__ == '__main__':
     try:
         default = 1
         if not quick:
-            pass
+            default = best_blocks(file_name)
         encode(file_name, default)
     except FileNotFoundError:
         print("File " + file_name + ".txt not found.")
