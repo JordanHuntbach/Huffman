@@ -193,7 +193,7 @@ def write_tree(tree):
 # Encodes a .txt file, writing the result to a .hc file.
 def encode(name, characters):
     # Extract the text from the file.
-    text = read_text('Plaintext/' + name + ".txt")
+    text = read_text(name + ".txt")
 
     # Create a binary tree from the text, with 'characters' as the number of characters to encode per leaf.
     binary_tree = get_tree(text, characters)
@@ -222,12 +222,13 @@ def encode(name, characters):
     tree = tree.encode()
 
     # Write the result to a file
-    write_binary('Encoded/' + name + ".hc", ''.join(output), tree)
+    write_binary(name + ".hc", ''.join(output), tree)
     print(name + " encoded.\n")
 
 
 # Writes plain text to a file.
 def write_text(name, data):
+    print("Writing text to " + name)
     filename = name
     write = open(filename, "w")
     write.write(data)
@@ -386,7 +387,7 @@ def read_binary(name):
 # Decodes a .hc file, and writes the result.
 def decode(name):
     # Read the file, and extract the binary tree, the text to decode, and a flag.
-    binary_tree, string, buffer = read_binary('Encoded/' + name + ".hc")
+    binary_tree, string, buffer = read_binary(name + ".hc")
 
     # Decode the file.
     output = search_tree_decode(string, binary_tree)
@@ -396,28 +397,51 @@ def decode(name):
         output = output[:-buffer]
 
     # Write the result to a file.
-    write_text('Decoded/' + name + ".txt", output)
+    write_text(name + ".txt", output)
     print(name + " decoded.\n")
 
 
 # Gets the compression ratio of the encoded file.
 def get_ratio(name):
-    text = os.path.getsize("Plaintext/" + name + ".txt")
+    text = os.path.getsize(name + ".txt")
     print("Original size: " + str(text))
-    code = os.path.getsize("Encoded/" + name + ".hc")
+    code = os.path.getsize(name + ".hc")
     print("Encoded size: " + str(code))
-    print("Ratio: " + str(code/text))
+    print("Ratio: " + str(code/text) + "\n")
 
 
-# Checks if the decoded file is the same as the plaintext.
-def check_success(name):
-    text = read_text('Plaintext/' + name + ".txt")
-    code = read_text('Decoded/' + name + ".txt")
-    if text == code:
-        print("File encoded/decoded successfully.\n---------------------------------- ")
-    else:
-        print("Encoding/decoding failure.")
+# Returns the optimum block size for file encoding.
+def best_blocks(file):
+    print("Calculating optimum block size.")
+    text = read_text(file + '.txt')
 
+    trees = []
+    frequencies = []
+    dictionaries = []
 
-def best_blocks(text):
-    return 1  # TODO: Make this work.
+    # Initialise a frequency dictionary and code dictionary for each block size.
+    blocks = [1, 2, 3, 4]
+    for i in blocks:
+        frequencies.append(Counter(chunk_string(text, i)[0]))
+        tree = attach_binary(create_tree(frequencies[blocks.index(i)]))
+        trees.append(tree)
+        dictionaries.append(tree_to_dict_code(tree, {}))
+
+    # Find the block size with smallest average word length (frequency * code length, per block)
+    # 1829819, 1639805, 1593621, 2402505
+    totals = []
+    for i in range(len(blocks)):
+        total = 0
+        dictionary = dictionaries[i]
+        frequency = frequencies[i]
+        keys = dictionary.keys()
+        for key in keys:
+            total += len(dictionary[key]) * frequency[key]
+        total /= 8
+        tree = ''.join(write_tree(trees[i]))
+        total += len(tree)
+        totals.append(total)
+
+    best = blocks[totals.index(min(totals))]
+    print(best)
+    return best

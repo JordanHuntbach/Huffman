@@ -8,7 +8,5 @@ if __name__ == '__main__':
     file_name = args.filename
     try:
         decode(file_name)
-        check_success(file_name)
-        get_ratio(file_name)
     except FileNotFoundError:
         print("File " + file_name + ".hc not found.")

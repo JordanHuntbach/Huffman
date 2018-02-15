@@ -13,5 +13,6 @@ if __name__ == '__main__':
         if not quick:
             default = best_blocks(file_name)
         encode(file_name, default)
+        get_ratio(file_name)
     except FileNotFoundError:
         print("File " + file_name + ".txt not found.")
