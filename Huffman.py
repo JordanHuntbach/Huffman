@@ -420,15 +420,14 @@ def best_blocks(file):
     dictionaries = []
 
     # Initialise a frequency dictionary and code dictionary for each block size.
-    blocks = [1, 2, 3, 4]
+    blocks = [1, 2, 3, 4]  # The block sizes to try.
     for i in blocks:
         frequencies.append(Counter(chunk_string(text, i)[0]))
         tree = attach_binary(create_tree(frequencies[blocks.index(i)]))
         trees.append(tree)
         dictionaries.append(tree_to_dict_code(tree, {}))
 
-    # Find the block size with smallest average word length (frequency * code length, per block)
-    # 1829819, 1639805, 1593621, 2402505
+    # Find the block size with smallest estimated files size ((block frequency * code length) per block + tree size)
     totals = []
     for i in range(len(blocks)):
         total = 0
